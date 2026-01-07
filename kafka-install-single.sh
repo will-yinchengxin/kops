@@ -6,8 +6,8 @@ echo "=================================="
 echo "步骤 1: 启动 Zookeeper"
 echo "=================================="
 
-# 配置目录
-CONF_DIR="<本地目录>"
+# 配置目录, "<本地目录>"
+CONF_DIR="/var/lib/conf"
 
 # 检查配置目录
 if [ ! -d "$CONF_DIR/zookeeper" ]; then
@@ -22,7 +22,7 @@ mkdir -p "$CONF_DIR/zookeeper/log"
 # 启动 Zookeeper
 docker run -d \
   --name zookeeper \
-  --network kafka-clickhouse-net \
+  --network host \
   -p 2181:2181 \
   -v "$CONF_DIR/zookeeper/zoo.cfg:/conf/zoo.cfg" \
   -v "$CONF_DIR/zookeeper/data:/var/lib/zookeeper/data" \
@@ -70,24 +70,22 @@ mkdir -p "$CONF_DIR/kafka/data"
 # 启动 Kafka
 docker run -d \
   --name kafka \
-  --network kafka-clickhouse-net \
-  -p 9092:9092 \
-  -p 29092:29092 \
-  -v "$CONF_DIR/kafka/server.properties:/etc/kafka/server.properties" \
-  -v "$CONF_DIR/kafka/data:/var/lib/kafka/data" \
+  --network host \
+  --restart unless-stopped \
+  -v /var/lib/conf/kafka/data:/var/lib/kafka/data \
   -e KAFKA_BROKER_ID=1 \
-  -e KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181 \
-  -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT \
-  -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092 \
+  -e KAFKA_ZOOKEEPER_CONNECT=localhost:2181 \
+  -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092 \
+  -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://172.16.27.228:9092 \
+  -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT \
   -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
   -e KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1 \
   -e KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 \
-  -e KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0 \
   -e KAFKA_AUTO_CREATE_TOPICS_ENABLE=true \
-  -e KAFKA_MESSAGE_MAX_BYTES=5242880 \
-  -e KAFKA_REPLICA_FETCH_MAX_BYTES=5242880 \
-  -e KAFKA_MAX_REQUEST_SIZE=5242880 \
-  -e KAFKA_COMPRESSION_TYPE=snappy \  
+  -e KAFKA_LOG_DIRS=/var/lib/kafka/data \
+  -e KAFKA_MESSAGE_MAX_BYTES=20242880 \
+  -e KAFKA_REPLICA_FETCH_MAX_BYTES=20242880 \
+  -e KAFKA_MAX_REQUEST_SIZE=20242880 \
   confluentinc/cp-kafka:7.5.0
 
 
